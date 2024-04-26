@@ -10,10 +10,13 @@ const int cellsize = 30;
 const int cellcount = 25;
 
 double lastUpdateTime = 0;
+bool running = true;
+
+static int score;
 
 bool trigger_event(double interval){
         double currentTime = GetTime(); 
-        if(currentTime - lastUpdateTime >= interval){
+        if (currentTime - lastUpdateTime >= interval){
             lastUpdateTime = currentTime;
             return true;
         }
@@ -21,7 +24,7 @@ bool trigger_event(double interval){
 };
 bool checkele_indequee(Vector2 element, deque<Vector2> deque){
     for(unsigned int i = 0; i < deque.size(); i++){
-        if(Vector2Equals(element, deque[i])){
+        if (Vector2Equals(element, deque[i])){
             return true;
         }
     }
@@ -54,11 +57,10 @@ class Food
 };
 class Snake
 {
-    private:
-        Vector2 direction = {1, 0};
     public:
+        Vector2 direction = {1, 0};
         deque<Vector2> body = {Vector2{4,7},Vector2{5,7},Vector2{6,7}};
-        
+        bool addsegment = false;
         Snake(/* args */){
             
         };
@@ -77,22 +79,31 @@ class Snake
 
         }
         void body_update(){
-            body.pop_back();
             body.push_front(Vector2Add(body[0], direction));
+            if (addsegment){
+                addsegment = false;
+            }
+            else
+            body.pop_back();
+            
         }
         void player_mov(){
 
-            if(IsKeyPressed(KEY_W) && direction.y != 1){
+            if (IsKeyPressed(KEY_W) && direction.y != 1){
                 direction = {0, -1};
+                running = true;
             }
-            if(IsKeyPressed(KEY_A) && direction.x != 1){
+            if (IsKeyPressed(KEY_A) && direction.x != 1){
                 direction = {-1, 0};
+                running = true;
             }
-            if(IsKeyPressed(KEY_S) && direction.y != -1){
+            if (IsKeyPressed(KEY_S) && direction.y != -1){
                 direction = {0, 1};
+                running = true;
             }
-            if(IsKeyPressed(KEY_D) && direction.x != -1){
+            if (IsKeyPressed(KEY_D) && direction.x != -1){
                 direction = {1, 0};
+                running = true;
             }
         }
         
@@ -101,6 +112,7 @@ class Game{
     private:
         Food food;
         Snake snake;
+        
     public:
     Game():food(),snake(){};
      
@@ -111,21 +123,53 @@ class Game{
         snake.draw_obj();
     }
     void Update()
-    {
-        if(trigger_event(0.2)){
-            snake.body_update();
-            CheckCollision();
+    {   
+        if (running)
+        {
+            if  (trigger_event(0.2))
+            {
+                snake.body_update();
+                CheckCollisionFood();
+                CheckCollisionEdge();  
+                CheckCollisionTail();
+            }  
         }
         snake.player_mov();
-        
     }
-    void CheckCollision(){
+
+    void CheckCollisionFood(){
         if (Vector2Equals(snake.body[0], food.location)){
-            cout << "EATSHIT" << endl;
+            cout << "Eating" << endl;
+            score ++;
+            snake.addsegment = true;
             food.location = food.gen_pos();
             while(checkele_indequee(food.location, snake.body)){
                 food.location = food.gen_pos();
             }
+        }
+    }
+    void CheckCollisionEdge(){
+        if (snake.body[0].x == -1 || snake.body[0].x == cellcount || snake.body[0].y == -1 || snake.body[0].y == cellcount){
+            cout << "GameOver" << endl;
+            GameOver();
+        }
+    }
+    void Reset(){
+        snake.direction = {1, 0};
+        snake.body = {Vector2{6,7},Vector2{5,7},Vector2{4,7}};
+        score = 0;
+    }
+    void GameOver(){
+        cout << "You got " << score << " score! Move to restart" << endl;
+        Reset();
+        running = false;
+
+    }
+    void CheckCollisionTail(){
+        deque<Vector2> headlessbody = snake.body;
+        headlessbody.pop_front();
+        if (checkele_indequee(snake.body[0], headlessbody)){
+            GameOver();
         }
     }
 
